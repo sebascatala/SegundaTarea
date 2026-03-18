@@ -30,12 +30,28 @@ public class CitizenController : ControllerBase
         }
     }
 
+    // Método para generar un tipo de sangre aleatorio
     private string GetRandomBloodType()
     {
         string[] bloodTypes = { "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-" };
         Random random = new Random();
         int index = random.Next(bloodTypes.Length);
         return bloodTypes[index];
+    }
+
+    // Método para generar un PersonalAsset aleatorio
+    private string GetRandomPersonalAsset(List<PersonalAsset> personalAssets)
+    {
+        if(personalAssets == null || personalAssets.Count == 0)
+        {
+            return null;
+        }
+        else
+        {
+            Random random = new Random();
+            int index = random.Next(personalAssets.Count);
+            return personalAssets[index].Name;
+        }
     }
 
     // Lógica para obtener todos los ciudadanos
@@ -64,10 +80,33 @@ public class CitizenController : ControllerBase
     
     // Lógica para crear un nuevo ciudadano
     [HttpPost]
-    public IActionResult Post([FromBody] Citizen newCitizen)
+    public async Task<IActionResult> Post([FromBody] Citizen newCitizen)
     {
+        // Validaciones previas para el nuevo ciudadano
+        if(newCitizen.Ci == 0 || string.IsNullOrEmpty(newCitizen.FirstName) || string.IsNullOrEmpty(newCitizen.LastName))
+        {
+            return Ok("Faltan datos obligatorios para crear el ciudadano");
+        }
+        if(_citizensList.Exists(c => c.Ci == newCitizen.Ci))
+        {
+            return Ok("Ya existe un ciudadano con el mismo CI");
+        }
+
+        //BloodType asignado aleatoriamente
         newCitizen.BloodType = GetRandomBloodType();
-        //poner validacion de si faltan datos o si el ci ya existe
+
+        //PersonalAsset asignado aleatoriamente
+        try
+        {
+            PersonalAssetService personalAssetService = new PersonalAssetService(_configuration);
+            var personalAssets = personalAssetService.GetPersonalAssets();
+            newCitizen.PersonalAssets = GetRandomPersonalAsset(personalAssets.Result);
+        }
+        catch(Exception ex)
+        {
+            return Ok($"Error al obtener los personal assets: {ex.Message}");
+        }
+
         _citizensList.Add(newCitizen);
         List<string[]> data = new List<string[]>();
         for (int i = 0; i < _citizensList.Count; i++)
@@ -97,14 +136,22 @@ public class CitizenController : ControllerBase
         {
             return Ok("Ciudadano no encontrado");
         }
+        else
+        {
+            citizenToUpdate.Ci = updatedCitizen.Ci;
+            citizenToUpdate.FirstName = updatedCitizen.FirstName;
+            citizenToUpdate.LastName = updatedCitizen.LastName;
 
-        citizenToUpdate.Ci = updatedCitizen.Ci;
-        citizenToUpdate.FirstName = updatedCitizen.FirstName;
-        citizenToUpdate.LastName = updatedCitizen.LastName;
-        citizenToUpdate.BloodType = updatedCitizen.BloodType;
-        citizenToUpdate.PersonalAssets = updatedCitizen.PersonalAssets;
-
-        return Ok(_citizensList);
+            CSVHelper.WriteCSV(_configuration["Data:Location"], _citizensList.Select(c => new string[]
+            {
+                c.Ci.ToString(),
+                c.FirstName,
+                c.LastName,
+                c.BloodType,
+                c.PersonalAssets
+            }).ToList());
+            return Ok(_citizensList);
+        }
     }
     
     // Lógica para eliminar un ciudadano
