@@ -5,19 +5,37 @@ using Microsoft.AspNetCore.Mvc;
 [Route("api/citizens")]
 public class CitizenController : ControllerBase
 {
-    private List<Citizen> _citizensList;
 
-    public CitizenController()
+    private List<Citizen> _citizensList;
+    private readonly IConfiguration _configuration;
+    public CitizenController(IConfiguration configuration)
     {
         _citizensList = new();
-        _citizensList.Add(new Citizen()
+        _configuration = configuration;
+
+        List<string[]> data = CSVHelper.ReadCSV(configuration["Data:Location"]);
+
+        for(int i =0; i<data.Count; i++)
         {
-            FirstName = "Juan",
-            LastName = "Perez",
-            Ci = 12345678,
-            BloodType = "A+",
-            PersonalAssets = "Casa, Auto"
-        });   
+            Citizen citizen = new Citizen
+            {
+                Ci = int.Parse(data[i][0]),
+                FirstName = data[i][1],
+                LastName = data[i][2],
+                BloodType = data[i][3],
+                PersonalAssets = data[i][4]
+            };
+            _citizensList.Add(citizen);
+
+        }
+    }
+
+    private string GetRandomBloodType()
+    {
+        string[] bloodTypes = { "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-" };
+        Random random = new Random();
+        int index = random.Next(bloodTypes.Length);
+        return bloodTypes[index];
     }
 
     // Lógica para obtener todos los ciudadanos
@@ -48,7 +66,23 @@ public class CitizenController : ControllerBase
     [HttpPost]
     public IActionResult Post([FromBody] Citizen newCitizen)
     {
+        newCitizen.BloodType = GetRandomBloodType();
+        //poner validacion de si faltan datos o si el ci ya existe
         _citizensList.Add(newCitizen);
+        List<string[]> data = new List<string[]>();
+        for (int i = 0; i < _citizensList.Count; i++)
+        {
+            string[] citizenData = new string[]
+            {
+                _citizensList[i].Ci.ToString(),
+                _citizensList[i].FirstName,
+                _citizensList[i].LastName,
+                _citizensList[i].BloodType,
+                _citizensList[i].PersonalAssets
+            };
+            data.Add(citizenData);
+        }
+        CSVHelper.WriteCSV(_configuration["Data:Location"], data);
         return Ok("Ciudadano creado exitosamente");
     }
     
@@ -83,8 +117,20 @@ public class CitizenController : ControllerBase
         {
             return Ok("No se borró el ciudadano, no se encontró");
         }
+        else
+        {
+            _citizensList.Remove(citizenToDelete);
+            CSVHelper.WriteCSV(_configuration["Data:Location"], _citizensList.Select(c => new string[]
+            {
+                c.Ci.ToString(),
+                c.FirstName,
+                c.LastName,
+                c.BloodType,
+                c.PersonalAssets
+            }).ToList());
+        }   
 
-        _citizensList.Remove(citizenToDelete);
+
         return Ok("Ciudadano eliminado exitosamente");
     }
 
