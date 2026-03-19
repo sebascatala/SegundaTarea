@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 
 [ApiController]
 [Route("api/citizens")]
@@ -58,8 +59,15 @@ public class CitizenController : ControllerBase
     [HttpGet]
     public IActionResult Get()
     {
-
-        return Ok(_citizensList);
+        if (_citizensList.Count == 0)
+        {
+            Log.Debug("No se encontraron ciudadanos en la lista");
+            return Ok("No hay ciudadanos registrados");
+        }
+        else
+        {
+            return Ok(_citizensList);
+        }
     }
 
     // Lógica para obtener un ciudadano específico
@@ -70,11 +78,12 @@ public class CitizenController : ControllerBase
         Citizen foundCitizen = _citizensList.Find(c => c.Ci == ci);
         if (foundCitizen == null)
         {
+            Log.Error("No se encontró el ciudadano con CI: {Ci}", ci);
             return Ok("Ciudadano no encontrado");
         }
         else
         {
-        return Ok(foundCitizen);
+            return Ok(foundCitizen);
         }
     }
     
@@ -104,8 +113,12 @@ public class CitizenController : ControllerBase
         }
         catch(Exception ex)
         {
+            Log.Error("Error al obtener los personal assets: {Message}", ex.Message);
             return Ok($"Error al obtener los personal assets: {ex.Message}");
         }
+
+        Log.Debug("Creando un nuevo ciudadano con CI: {Ci}, Nombre: {FirstName} {LastName}", newCitizen.Ci, newCitizen.FirstName, newCitizen.LastName);
+        Log.Information("Se agrego un nuevo ciudadano");
 
         _citizensList.Add(newCitizen);
         List<string[]> data = new List<string[]>();
