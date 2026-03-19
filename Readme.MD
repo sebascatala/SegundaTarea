@@ -4,13 +4,16 @@
 1. [Overview](#overview)
 2. [Installation & Steps](#installation--steps)
 3. [Project Stucture](#Project-Structure)
-4. [Metodología: Los 12 Factores](#como-se-usaron-los-12-factores)
+4. [Business Logic](#Busines-Logic)
+5. [API Endpoints](#API-Endpoints) 
+6. [Metodología: Los 12 Factores](#como-se-usaron-los-12-factores)
 
 # OverView
 - Esta API permite la gestión de ciudadanos mediante un CRUD completo.
 - Integra servicios externos para la asignación de activos personales y persistencia en archivos CSV.
 - Genera tipo de sangre y activos personales de forma aleatoria.
 - El proyecto está construido bajo los principios de aplicaciones nativas de la nube.
+
 
 # Installation & Steps
 ## Step 1 Clone Repositori
@@ -21,26 +24,41 @@
 - dotnet restore
 - dotnet run
 
+
 # Project Structure
 - /Controllers: Contiene CitizenController.cs, donde reside la lógica de los endpoints de la API.
-
 - /Models: Definición de las entidades del sistema:
-
 - Citizen.cs: Modelo principal del ciudadano.
-
 - PersonalAsset.cs: DTO para el mapeo de activos desde la API externa.
-
 - /Services: PersonalAssetService.cs encargado del consumo de servicios externos mediante HttpClient.
-
 - /Utils: CsvHelper.cs que encapsula la lógica de lectura y escritura de archivos CSV.
-
 - /Properties: Configuración de lanzamiento (launchSettings.json).
-
 - appsettings.json: Archivo central de configuración y variables de entorno.
-
 - citizens.csv: Base de datos en archivo plano.
-
 - log-{date}.log: Archivos de registro generados por Serilog.
+
+
+# Business Logic
+- La API automaticamente quetiona campos especificos al crear un nuevo ciudadano:
+- **GetRandomBloodType**:  
+    Asigna de forma aleatoria uno de los 8 tipos de sangre humanos (A+, O-, etc.) al momento de la creación.
+
+- **GetRandomPersonalAsset**:  
+  - Se conecta de forma asíncrona a una API externa de objetos.  
+  - Recupera la lista de activos disponibles.  
+  - Selecciona uno al azar para vincularlo al ciudadano, garantizando que cada registro tenga un activo del mundo real.
+
+
+# API Endpoints
+- Puesto que la API usa Swagger, es accesible en http://localhost:9070/swagger
+
+| Método | Endpoint              | Descripción 
+|--------|---------------------- |------------
+| GET    | `/api/citizens`       | Retorna la lista de todos los ciudadanos registrados en el CSV. 
+| GET    | `/api/citizens/{ci}`  | Busca y retorna un ciudadano específico por su número de CI. 
+| POST   | `/api/citizens`       | Crea un ciudadano. Necesita `Ci`,`FirstName`,`LastName`. El sistema asigna `BloodType` y `PersonalAssets`.
+| PUT    | `/api/citizens/{ci}`  | Actualiza los datos de un ciudadano existente identificado por su CI.
+| DELETE | `/api/citizens/{ci}`  | Elimina permanentemente a un ciudadano del registro CSV.
 
 # Como se usaron los 12 factores
 ## 1. Code Base
